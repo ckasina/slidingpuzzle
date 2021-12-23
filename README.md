@@ -37,11 +37,8 @@ Start the program
 
 ## Screenshots
 
-Options Menu
 ![Options Menu](screenshots/1.gif)
 
-Shuffling the puzzle
 ![Shuffling the puzzle](screenshots/2.gif)
 
-Winning the game
 ![Winning the game](screenshots/3.gif)
