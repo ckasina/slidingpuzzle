@@ -44,4 +44,4 @@ Shuffling the puzzle
 ![Shuffling the puzzle](screenshots/2.gif)
 
 Winning the game
-![Winning the game](screenshots/2.png)
+![Winning the game](screenshots/3.gif)
