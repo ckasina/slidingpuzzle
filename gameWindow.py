@@ -21,23 +21,35 @@ class gameWindow:
         self.squareSize = 75
         self.borderSize = 3
 
-        self.width = (self.cols*self.squareSize) + ((self.cols-1)*self.borderSize)
-        self.height = (self.rows*self.squareSize) + ((self.rows-1)*self.borderSize)
+        self.gridWidth = (self.cols*self.squareSize) + ((self.cols-1)*self.borderSize)
+        self.gridHeight = (self.rows*self.squareSize) + ((self.rows-1)*self.borderSize)
+
+        self.width = self.gridWidth
+        self.height = self.gridHeight + self.squareSize + (self.borderSize * 2)
     
     def initFormatting(self, title, showNumbers, useImage, extras):
         self.title = title
-        self.window = pygame.display.set_mode((self.width, self.height))
-        pygame.display.set_caption(self.title)
         self.borderColor = (255, 255, 255)
+        
+        self.background = pygame.Surface((self.gridWidth, self.gridHeight))
+        self.background.fill(self.borderColor)
+        self.gridSurf = pygame.Surface((self.gridWidth, self.gridHeight))
+        self.statusSurf = pygame.Surface((self.gridWidth, self.height - self.gridHeight))
+        self.window = pygame.display.set_mode((self.width, self.height))
+        
+        pygame.display.set_caption(self.title)
+
         self.tileRects = []
 
-        self.background = pygame.Surface((self.width, self.height))
-        self.background.fill(self.borderColor)
         self.showNumbers = showNumbers
 
         if self.showNumbers:
             fontName = extras[0]
             self.font = pygame.font.SysFont(fontName, int(self.squareSize / 3), bold=True)
+
+        else:
+            self.font = pygame.font.SysFont("Comic Sans MS", int(self.squareSize / 3), bold=True)
+
         
         self.useImage = useImage
         if self.useImage:
@@ -46,33 +58,29 @@ class gameWindow:
             (self.squareSize * self.cols, self.squareSize * self.rows))
 
             self.tileSurfaces = []
-            for r in range(self.rows):
-                self.tileRects.append([])
+
+        else:
+            self.tileColor = extras[1]
+
+        for r in range(self.rows):
+            self.tileRects.append([])
+            if self.useImage:
                 self.tileSurfaces.append([])
-                for c in range(self.cols):
+
+            for c in range(self.cols):
+                posX = c * (self.squareSize + self.borderSize)
+                posY = r * (self.squareSize + self.borderSize)
+
+                self.tileRects[r].append(pygame.Rect(posX, posY,
+                self.squareSize, self.squareSize))
+                pygame.draw.rect(self.background, (0, 0, 0), self.tileRects[r][c])
+
+                if self.useImage:
                     surf = pygame.Surface((self.squareSize, self.squareSize))
                     x = c * self.squareSize
                     y = r * self.squareSize
                     surf.blit(self.imageSurf, (0, 0), area=(x, y, self.squareSize, self.squareSize))
                     self.tileSurfaces[r].append(surf)
-                    posX = c * (self.squareSize + self.borderSize)
-                    posY = r * (self.squareSize + self.borderSize)
-
-                    self.tileRects[r].append(pygame.Rect(posX, posY, 
-                    self.squareSize, self.squareSize))
-                    pygame.draw.rect(self.background, (0, 0, 0), self.tileRects[r][c])
-
-        else:
-            self.tileColor = extras[1]
-            for r in range(self.rows):
-                self.tileRects.append([])
-                for c in range(self.cols):
-                    posX = c * (self.squareSize + self.borderSize)
-                    posY = r * (self.squareSize + self.borderSize)
-
-                    self.tileRects[r].append(pygame.Rect(posX, posY,
-                    self.squareSize, self.squareSize))
-                    pygame.draw.rect(self.background, (0, 0, 0), self.tileRects[r][c])
 
     def initSpeed(self):
         self.fps = 60
@@ -82,14 +90,34 @@ class gameWindow:
 
     def initGame(self):
         self.grid = Grid(self.rows, self.cols)
+        self.won = False
+        self.moves = 0
         self.shuffleMoves = (self.rows*self.cols) * 5
         self.shuffleAnimation()
         
-
     def updateDisplay(self):
-        self.window.blit(self.background, (0, 0))
+        self.updateGridSurf()
+        self.updateStatusSurf()
+        self.window.blit(self.gridSurf, (0, 0))
+        self.window.blit(self.statusSurf, (0, self.gridHeight))
+        pygame.display.update()
+
+    def updateStatusSurf(self):
+        self.statusSurf.fill((0, 0, 0))
+        pygame.draw.rect(self.statusSurf, self.borderColor, (0, 0, self.gridWidth, self.height - self.gridHeight), self.borderSize)
+        
+        text = {False: f"Moves: {self.moves}", True: f"Finished in {self.moves} moves!"}[self.won]
+        textSurf = self.font.render(text, True, self.borderColor)
+        textX = (self.statusSurf.get_width() - textSurf.get_width()) // 2
+        textY = (self.statusSurf.get_height() - textSurf.get_height()) // 2
+
+        self.statusSurf.blit(textSurf, (textX, textY))
+
+    def updateGridSurf(self):
+        self.gridSurf.blit(self.background, (0, 0))
         blankR, blankC = self.grid.getBlank()
-        pygame.draw.rect(self.window, (0, 0, 0), self.tileRects[blankR][blankC])
+        if (blankR, blankC) != (None, None):
+            pygame.draw.rect(self.gridSurf, (0, 0, 0), self.tileRects[blankR][blankC])
 
         for r in range(self.rows):
             for c in range(self.cols):
@@ -98,23 +126,25 @@ class gameWindow:
 
                 if self.useImage:
                     r1, c1 = self.grid.numToPos(self.grid.getCell(r, c))
-                    self.window.blit(self.tileSurfaces[r1][c1], self.tileRects[r][c])
+                    self.gridSurf.blit(self.tileSurfaces[r1][c1], self.tileRects[r][c])
 
                 else:
-                    pygame.draw.rect(self.window, self.tileColor, self.tileRects[r][c])
+                    pygame.draw.rect(self.gridSurf, self.tileColor, self.tileRects[r][c])
 
                 if self.showNumbers:
-                    textSurf = self.font.render(str(self.grid.getCell(r, c)), True, (self.borderColor))
+                    textSurf = self.font.render(str(self.grid.getCell(r, c)), True, self.borderColor)
                     rect = self.tileRects[r][c]
-                    self.window.blit(textSurf, (rect.x + 5, rect.y + 5))
+                    self.gridSurf.blit(textSurf, (rect.x + 5, rect.y + 5))
 
-        pygame.display.update()
 
     def slide(self, pos):
         moved = self.grid.move(pos)
         if moved:
+            self.moves += 1
             return self.grid.checkSolved()
 
+        else:
+            return False
 
     def shuffleAnimation(self):
         previous = (None, None)
@@ -173,7 +203,7 @@ class gameWindow:
             return
 
         self.slideAnimation((row, col), self.slideVel)
-        print(self.slide((row, col)))
+        self.won = self.slide((row, col))
 
 
     def keyDown(self, key):
@@ -188,7 +218,7 @@ class gameWindow:
             pieceR, pieceC = blankR + direction[key][0], blankC + direction[key][1]
             if (0 <= pieceR < self.rows) and (0 <= pieceC < self.cols):
                 self.slideAnimation((pieceR, pieceC), self.slideVel)
-                print(self.slide((pieceR, pieceC)))
+                self.won = self.slide((pieceR, pieceC))
                 
 
     def handleEvents(self):
@@ -208,4 +238,19 @@ class gameWindow:
         while self.running:
             self.clock.tick(self.fps)
             self.updateDisplay()
+            if self.won:
+                blankR = self.rows-1
+                blankC = self.cols - 1
+                self.grid.grid[blankR][blankC] = self.rows*self.cols
+                self.updateDisplay()
+                pygame.time.wait(1500)
+                if self.useImage:
+                    newImage = pygame.transform.scale(self.imageSurf, (self.gridWidth, self.gridHeight))
+                    self.gridSurf.blit(newImage, (0, 0))
+                    self.window.blit(self.gridSurf, (0, 0))
+                    pygame.display.update()
+                    pygame.time.wait(1500)
+
+                self.initGame()
+
             self.handleEvents()

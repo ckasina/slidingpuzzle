@@ -36,6 +36,8 @@ class Grid:
                 if self.grid[r][c] == 0:
                     return (r, c)
 
+        return (None, None)
+
     def getAdjacent(self, pos):
         r, c = pos
         adj = [(r-1, c), (r+1, c), (r, c-1), (r, c+1)]
